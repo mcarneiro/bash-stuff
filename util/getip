@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# Author Marcelo Miranda Carneiro -- mcarneiro@gmail.com
+
+set -o nounset
+set -o errexit
+set -o pipefail
+
+if [ "${1:-}" = "?" ]
+	then
+		B1="\033[1m";
+		B2="\033[0m";
+		echo -e "";
+		echo -e "${B1}AUTHOR${B2}";
+		echo -e "  Marcelo Miranda Carneiro - mcarneiro@gmail.com";
+		echo -e "";
+		echo -e "${B1}INFO${B2} (release 2012-06-21)";
+		echo -e "  Get IP";
+		echo -e "";
+		echo -e "${B1}USAGE${B2}";
+		echo -e "  getip [INTERFACE=en0]";
+		echo -e "";
+		echo -e "  INTERFACE    the name of the interface: en0, en1, en2, etc.";
+		echo -e "";
+		echo -e "${B1}EXAMPLES${B2}";
+		echo -e "  getip          # 10.0.0.1"
+		echo -e "  getip en1      # 10.0.0.10"
+		echo -e "";
+		exit 1;
+fi
+
+INTERFACE="${1:-}"
+if [ -z "$INTERFACE" ]; then
+	INTERFACE='en0'
+fi
+ifconfig | sed -n "/$INTERFACE/,/netmask/ p" | grep "inet " | awk '{print$2}'

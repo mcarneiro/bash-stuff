@@ -1,0 +1,29 @@
+#!/bin/bash
+
+if [ "$1" = "?" ]
+	then
+		B1="\033[1m";
+		B2="\033[0m";
+		echo -e "";
+		echo -e "${B1}AUTHOR${B2}";
+		echo -e "  Marcelo Miranda Carneiro - mcarneiro@gmail.com";
+		echo -e "";
+		echo -e "${B1}INFO${B2} (release 2011-02-18)";
+		echo -e "  Creates a zip file with the modified or created files from the current changes on working copy";
+		echo -e "";
+		echo -e "${B1}USAGE${B2}";
+		echo -e "  zip-by-log [FILENAME]";
+		echo -e "";
+		echo -e "${B1}EXAMPLES${B2}";
+		echo -e "  zip-by-status # if no name is passed, creates a 'status.zip' file";
+		echo -e "  zip-by-status ftp.zip";
+		echo -e "";
+		exit 1;
+fi
+FILENAME=$1;
+
+if [ "$FILENAME" = "" ];
+	then
+		FILENAME="status.zip";
+fi
+zip $FILENAME $(svn st | grep "^[AM]" | awk '{print$(NF)}')

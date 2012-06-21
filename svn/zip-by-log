@@ -1,0 +1,48 @@
+#!/bin/bash
+
+B1="\033[1m";
+B2="\033[0m";
+if [ "$1" = "?" ]
+	then
+		echo -e "";
+		echo -e "${B1}AUTHOR${B2}";
+		echo -e "  Marcelo Miranda Carneiro - mcarneiro@gmail.com";
+		echo -e "";
+		echo -e "${B1}INFO${B2} (release Qua 14 Set 2011 12:43:13 BRT)";
+		echo -e "  Creates a zip file with the modified or created files from a range of revisions";
+		echo -e "";
+		echo -e "${B1}USAGE${B2}";
+		echo -e "  zip-by-log [FILENAME] SVN_PARAMETERS";
+		echo -e "";
+		echo -e "${B1}EXAMPLES${B2}";
+		echo -e "  zip-by-log -l10";
+		echo -e "  zip-by-log ftp.zip -l10";
+		echo -e "  zip-by-log ftp.zip \"-r10 -r20\"";
+		echo -e "";
+		exit 1;
+fi
+
+if [ "$#" = "2" ];
+	then 
+		FILENAME=$1;
+		LOG=$2;
+	else
+		LOG=$1;
+		FILENAME="log_$LOG";
+fi
+
+HASZIP=`which zip`;
+SVN_URL=`svn info | grep "URL:" | awk '{print $2}'`"/";
+PATH_TO_FILTER="$( echo $SVN_URL | awk -F "/" '{print $(NF-1)}')";
+ARGUMENTS=`svn log $LOG -v | grep $PATH_TO_FILTER | grep -E "\s+?[AMR]" | awk -F "$PATH_TO_FILTER/" '{print $2}' | awk '{print $1}' | grep "\." | sort -u`;
+
+if [ "$HASZIP" = "" ];
+	then
+		echo -e "Adding files to ${B1}\"$FILENAME.tar\"${B2}: "
+		tar -cvf "$FILENAME".tar $ARGUMENTS;
+	else
+		echo -e "Adding files to ${B1}\"$FILENAME.zip\"${B2}: "
+		zip "$FILENAME".zip $ARGUMENTS;
+fi;
+echo -e "${B1}Finished!${B2}";
+exit 1;

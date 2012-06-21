@@ -1,0 +1,42 @@
+#!/bin/bash
+
+if [ "$1" = "?" ]
+	then
+		B1="\033[1m";
+		B2="\033[0m";
+		echo -e "";
+		echo -e "${B1}AUTHOR${B2}";
+		echo -e "  Marcelo Miranda Carneiro - mcarneiro@gmail.com";
+		echo -e "";
+		echo -e "${B1}INFO${B2} (release 2011-01-11)";
+		echo -e "  Gets only the url from svn info command";
+		echo -e "";
+		echo -e "${B1}USAGE${B2}";
+		echo -e "  svn-url [BACK] [FOLDER]";
+		echo -e "";
+		echo -e "  BACK    number of \"back directories\" from the current url";
+		echo -e "  FOLDER  folder to execute svn info";
+		echo -e "";
+		echo -e "${B1}EXAMPLES${B2}";
+		echo -e "  svn-url          # https://svn.domain:8443/svn/project/branches/"
+		echo -e "  svn-url 1        # https://svn.desenv:8443/svn/project/"
+		echo -e "  svn-url 0 test/  # https://svn.desenv:8443/svn/project/branches/test/"
+		echo -e "";
+		exit 1;
+fi
+
+URL_BACK_NUM="0"
+URL=$(svn info $2 | grep "URL:" | awk '{print $2}')"/"
+
+if [ "$1" != "" ]
+	then
+		URL_BACK_NUM="$1"
+fi
+
+if [ "$URL_BACK_NUM" = "0" ]
+	then
+		echo $URL
+	else
+		URL_TO_FILTER=$(echo $URL | awk -F "/" '{print $(NF+'$(($URL_BACK_NUM))')}')
+		echo $URL | awk -F "$URL_TO_FILTER/" '{print$1}'
+fi

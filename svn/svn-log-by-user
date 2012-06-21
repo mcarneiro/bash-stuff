@@ -1,0 +1,24 @@
+#!/bin/bash
+
+if [ "$1" = "?" ]
+	then
+		B1="\033[1m";
+		B2="\033[0m";
+		echo -e "";
+		echo -e "${B1}AUTHOR${B2}";
+		echo -e "  Marcelo Miranda Carneiro - mcarneiro@gmail.com";
+		echo -e "";
+		echo -e "${B1}INFO${B2} (release 2011-01-11)";
+		echo -e "  log changes by user (SVN)";
+		echo -e "";
+		echo -e "${B1}USAGE${B2}";
+		echo -e "  log-by-user SVN_PARAMETERS USERNAME";
+		echo -e "";
+		echo -e "${B1}EXAMPLES${B2}";
+		echo -e "  log-by-user -l10 \"mcarneiro\"";
+		echo -e "  log-by-user -r10:HEAD \"mcarneiro\"";
+		echo -e "";
+		exit 1;
+fi
+
+svn log -v $1 | sed -n "/"$2"/,/-----$/ p"

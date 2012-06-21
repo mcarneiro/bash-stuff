@@ -1,0 +1,11 @@
+#!/bin/bash
+svn up;
+for a in $(svn pget svn:externals | awk '{print$1}' | grep "[a-zA-Z0-9]");
+	do
+		find $a -name ".svn" -exec rm -rf {} \; -print;
+	done;
+svn pset svn:externals '' .;
+find . -name "._*" -delete;
+svn add . --force;
+svn pset svn:ignore "$(svn pget svn:ignore)" . --depth infinity;
+

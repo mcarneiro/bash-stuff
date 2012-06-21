@@ -1,0 +1,293 @@
+#!/bin/bash
+
+# Author Marcelo Miranda Carneiro -- mcarneiro@fbiz.com.br | mcarneiro@gmail.com
+
+set -o nounset
+set -o errexit
+set -o pipefail
+
+ARGS=( "${@:-}" )
+URL='http://localhost/~mcarneiro/test-post.php'
+URL='http://spritegen.website-performance.org/'
+QUIET=''
+FORCE=''
+WARN=''
+ASSETSPATH='.'
+OUTPUT='./sprite.png'
+TO_SEND=(
+	'MAX_FILE_SIZE=1048576'\
+	# 'path='\
+	'ignore-duplicates=ignore'\
+	'width-resize=100'\
+	'height-resize=100'\
+	'aspect-ratio=on'\
+	'build-direction=vertical'\
+	'horizontal-offset=2'\
+	'vertical-offset=2'\
+	'wrap-columns=on'\
+	'background='\
+	'use-transparency=on'\
+	'image-output=PNG'\
+	'image-num-colours=true-colour'\
+	'selector-prefix='\
+	'file-regex='\
+	'class-prefix='\
+	'add-width-height-to-css=on'\
+	'sub=Create_Sprite_Image_&_CSS'
+	# 'sub=Create Sprite Image & CSS' # solve the space issue
+)
+# FORMAT AND MESSAGES
+getColorId() {
+	# color [isbg=""]
+	local BG=''
+	local COLOR=''
+	
+	case "${1:-}" in
+		'black'|0) COLOR='0' ;;
+		'red'|1) COLOR='1' ;;
+		'green'|2) COLOR='2' ;;
+		'yellow'|3) COLOR='3' ;;
+		'blue'|4) COLOR='4' ;;
+		'purple'|5) COLOR='5' ;;
+		'cyan'|6) COLOR='6' ;;
+		'gray'|7) COLOR='7' ;;
+	esac
+	if [ "$COLOR" ]; then
+		BG='3'
+	fi
+	if [ "${2:-}" -a "$COLOR" ]; then
+		BG='4'
+	fi
+	echo "${BG}${COLOR}"
+}
+getStyleId() {
+	# [style="none"]
+	local STYLE=''
+	
+	case "${1:-}" in
+		'bold'|1) STYLE='1' ;;
+		'underscore'|4) STYLE='4' ;;
+		'blink'|5) STYLE='5' ;;
+		'reverse'|7) STYLE='7' ;;
+		'concealed'|8) STYLE='8' ;;
+		'none'|0|*) STYLE='' ;;
+	esac
+	echo "$STYLE"
+}
+getFormatCode() {
+	# [color="white" style="none" bgcolor=""]
+	local ATTR=(
+		"`getColorId \"${3:-}\" 1`"\
+		"`getColorId \"${1:-}\"`"\
+		"`getStyleId \"${2:-}\"`"
+	)
+	local OPENTAG=''
+	local CLOSETAG='\033[0m'
+	local CURR=''
+	local i
+	# echo \${ATTR[@]}: ${ATTR[@]}
+	for(( i=0; i<${#ATTR[@]}; i++ )); do
+		CURR=${ATTR[i]}
+		if [ -z "$OPENTAG" ]; then
+			OPENTAG='\033['
+		fi
+		if [ -n "$CURR" ]; then
+			OPENTAG="${OPENTAG};${CURR}"
+		fi
+	done
+	if [ -n "$OPENTAG" ]; then
+		OPENTAG="${OPENTAG}m"
+	fi
+	echo "${OPENTAG}{txt}$CLOSETAG"
+}
+format() {
+	# text [color="white" style="none" bgcolor=""]
+	TXT=`echo ${1:-}`
+	echo -e `getFormatCode ${2:-} ${3:-} ${4:-} | awk -F '{txt}' -v t="$TXT" '{print$1't'$2}'`
+}
+
+# METHOD UTILITIES
+hasArg() {
+	#arg_name
+	local RET=''
+	local i
+	for(( i=0; i<${#ARGS[@]}; i++ )); do
+		if [ "${ARGS[i]}" = "${1:-}" ]; then
+			RET='1'
+			break
+		fi
+	done
+	echo $RET
+}
+getArg() {
+	## get args in the format "-argname=value"
+	# arg_name
+	# custom_args
+	local CURRARG=""
+	local HASDASH=""
+	local GETNEXTVALUE=""
+	local a=""
+	local CUSTOM_ARGS=( "${2:-}" )
+
+	if [ -z "$CUSTOM_ARGS" ]; then
+		CUSTOM_ARGS=( ${ARGS[@]} )
+	fi
+
+	HASDASH=`echo $1 | awk -F "^-+" '{print$2}'`
+	if [[ -n "$HASDASH" ]]; then
+		
+		for(( i=0; i<${#CUSTOM_ARGS[@]}; i++ )); do
+			a=${CUSTOM_ARGS[$i]}
+			if [ "$a" == "$1" ]; then
+				GETNEXTVALUE="1"
+				continue;
+			fi
+			if [[ "$GETNEXTVALUE" == "1" ]]; then
+				CURRARG=$a
+				break;
+			fi
+		done
+		
+	else
+		for(( i=0; i<${#CUSTOM_ARGS[@]}; i++ )); do
+			a=${CUSTOM_ARGS[$i]}
+			CURRARG=`echo $a | awk -F "$1=" '{print$2}'`
+			if [ "$CURRARG" != "" ]; then
+				break;
+			fi
+		done
+	fi
+	echo $CURRARG
+}
+
+# log stuff
+log() {
+	# text [style]
+	if [ -z "$QUIET" ]; then
+		local COLOR
+		local STYLE
+		local MSG=' [LOG]'
+		local TXT=${1:-}
+		
+		case "${2:-}" in
+			'success')
+				MSG=' [SUCCESS]'
+				COLOR='green'
+				STYLE='bold'
+			;;
+			'title')
+				MSG=''
+				COLOR='white'
+				STYLE='bold'
+				TXT=`echo $TXT | tr 'a-z' 'A-Z'`
+			;;
+			'warn')
+				MSG=' [WARNING]'
+				COLOR='yellow'
+			;;
+		esac
+		
+		if [[ -n "$TXT" ]]; then
+			MSG="$MSG $TXT"
+		else
+			MSG=''
+		fi
+		format "$MSG" "$COLOR" "$STYLE"
+	fi
+}
+warn() {
+	# text
+	WARN="1"
+	log "${1:-}" "warn"
+}
+success() {
+	# text
+	log "${1:-}" "success"
+}
+title() {
+	# text
+	log "${1:-}" "title"
+}
+finish() {
+	log
+	if [ -n "$WARN" ]; then
+		warn "FINISHED with some warnings."
+	else
+		success "FINISHED!"
+	fi
+	log
+}
+
+# arguments
+verifyArgumens() {
+	local OUTPUT_ARG="`getArg o`";
+	local CONFIG_FILE="`getArg config`";
+	local INPUT_PATH="${ARGS[0]}";
+	local ZIP_PATH="$INPUT_PATH";
+	
+	# if is directory, generates zip
+	if [ -d $INPUT_PATH ]; then
+		# if it has a config file
+		if [ -z $CONFIG_FILE ] && [ -f "${INPUT_PATH}/config.txt" ]; then
+			CONFIG_FILE="${INPUT_PATH}/config.txt"
+		fi
+		zip -qr temp.zip $INPUT_PATH;
+		ZIP_PATH='./temp.zip';
+	fi
+
+	getConfig $CONFIG_FILE;
+	
+	# set output path
+	if [ ! -z $OUTPUT_ARG ]; then
+		OUTPUT=$OUTPUT_ARG;
+	fi
+	
+	# update sendData with zip file
+	if [ -z "${ARGS[*]}"  ] ||[ ! -f $ZIP_PATH ]; then
+		warn "Arquivo \"$ZIP_PATH\" não existe!"
+		exit 2;
+	else
+		TO_SEND=( ${TO_SEND[@]} "path=@$ZIP_PATH" );
+	fi
+}
+getConfig() {
+	local CUSTOM_ARGS
+	title "Config file content"
+	if [ -f "${1:-}" ]; then
+		CONTENT="`cat ${1:-}`"
+		TO_SEND=( ${TO_SEND[@]} `echo $CONTENT | awk -F "#####" '{print$1}'` );
+		local CUSTOM_ARGS="`echo $CONTENT | awk -F "#####" '{print$2}'`"
+		OUTPUT="${INPUT_PATH}`getArg "o" "$CUSTOM_ARGS"`"
+	fi
+}
+
+dataToSend() {
+	local VAL="$(printf ' -F %s' "${TO_SEND[@]}")";
+	echo $VAL;
+}
+sendData() {
+	echo $(curl `dataToSend` $URL)
+}
+getCSS() {
+	echo ${1:-} | sed 's/^.*<textarea[^>]*>\(.*\)<\/textarea>.*$/\1/' # | sed 's/}/}&\n/g'
+}
+getSprite() {
+	SPRITE_URL=$(echo ${1:-} | sed 's/^.*<a class="download" href="\([^\"]*\)">.*$/\1/')
+	curl -s -l "$(echo "${URL}`echo ${SPRITE_URL} | sed 's/\&amp;/\&/g'`")" > $OUTPUT
+}
+
+# dispose
+dispose() {
+	if [ -f 'temp.zip' ]; then
+		rm temp.zip
+	fi
+}
+
+# run
+verifyArgumens
+DATA=`sendData`
+getCSS "$DATA";
+getSprite "$DATA";
+dispose
+# echo $OUTPUT
+success "Arquivo gerado em $OUTPUT";

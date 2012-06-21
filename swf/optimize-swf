@@ -1,0 +1,23 @@
+#!/bin/bash
+
+CURRENT="`pwd`";
+FILENAME="`echo $1 | awk -F "/" '{print$(NF)}'`";
+DIRECTORY_ORI="`echo $1 | awk -F "$FILENAME" '{print$1}'`";
+DIRECTORY_FIN="";
+
+echo $DIRECTORY_ORI;
+
+cd $DIRECTORY_ORI;
+DIRECTORY_FIN=`pwd`;
+cd $CURRENT;
+
+STRING1="`echo $DIRECTORY_FIN | awk -F "/" '{print$(NF)}'`";
+STRING2=""
+if [ "$STRING1" != "$STRING2" ];
+	then
+		DIRECTORY_FIN=$DIRECTORY_FIN"/";
+fi;
+
+echo $DIRECTORY_FIN$FILENAME;
+
+/Applications/Develop/flex_sdk_3/bin/optimizer --input $DIRECTORY_FIN$FILENAME --output $DIRECTORY_FIN$FILENAME

@@ -1,0 +1,32 @@
+#!/bin/bash
+
+if [ "$1" = "?" ]
+	then
+		B1="\033[1m";
+		B2="\033[0m";
+		echo -e "";
+		echo -e "${B1}AUTHOR${B2}";
+		echo -e "  Marcelo Miranda Carneiro - mcarneiro@gmail.com";
+		echo -e "";
+		echo -e "${B1}INFO${B2} (release 2011-01-11)";
+		echo -e "  add files and folders recursivelly applying the current \"svn:ignore\" property";
+		echo -e "";
+		echo -e "${B1}USAGE${B2}";
+		echo -e "  svn-ignore-add FOLDER_NAME";
+		echo -e "";
+		exit 1;
+fi
+
+svn add $1 --force --depth empty; svn pset svn:ignore "$(svn pget svn:ignore .)" $1; svn add $1 --force --depth files; 
+DIRECTORIES=(`svn st $1 | grep "^?" | awk '{print$2}'`);
+
+if [ "$DIRECTORIES" != "" ] 
+	then
+		for a in "${DIRECTORIES[@]}";
+			do
+				if [ -d "$a" ]
+				then
+					svn-ignore-add $a;
+				fi;
+			done;
+fi;

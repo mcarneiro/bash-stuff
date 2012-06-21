@@ -1,0 +1,91 @@
+#!/bin/bash
+# Author Marcelo Miranda Carneiro -- mcarneiro@fbiz.com.br | mcarneiro@gmail.com
+
+set -o nounset
+set -o errexit
+set -o pipefail
+
+ARGS=( "${@:-}" )
+DATE=`date`
+
+if [ "${ARGS[0]}" = "?" ]; then
+	B1="\033[1m";
+	B2="\033[0m";
+	echo -e "";
+	echo -e "${B1}AUTHOR${B2}";
+	echo -e "  Marcelo Miranda Carneiro - mcarneiro@gmail.com";
+	echo -e "";
+	echo -e "${B1}INFO${B2} (release 2011-01-11)";
+	echo -e "  Gets only the url from svn info command";
+	echo -e "";
+	echo -e "${B1}USAGE${B2}";
+	echo -e "  svn-url [BACK] [FOLDER]";
+	echo -e "";
+	echo -e "  BACK    number of \"back directories\" from the current url";
+	echo -e "  FOLDER  folder to execute svn info";
+	echo -e "";
+	echo -e "${B1}EXAMPLES${B2}";
+	echo -e "  svn-url          # https://svn.domain:8443/svn/project/branches/"
+	echo -e "  svn-url 1        # https://svn.desenv:8443/svn/project/"
+	echo -e "  svn-url 0 test/  # https://svn.desenv:8443/svn/project/branches/test/"
+	echo -e "";
+	exit 1;
+fi
+
+verifyFile() {
+	if [ ! -f "${1:-}" ]; then
+		echo "Não existe ou não é um arquivo: \"${1:-}\""
+	fi
+	echo "1"
+}
+backup() {
+	zip "encodeme_bkp-$DATE.zip" $1
+}
+hasEncoding() {
+	local HAS_ENCODING=`iconv -l | awk '{print tolower($0)}' | grep "${1:-}"`
+	[ "$HAS_ENCODING" != "" ] && echo "1" || echo "0"
+}
+convert() {
+	local FILE=${1:-}
+	local TO_ENCODING=${2:-}
+	local HASFILE=`verifyFile $FILE`
+	local FROM_ENCODING='0'
+	
+	if [ ! "$TO_ENCODING" ]; then
+		TO_ENCODING='utf-8'
+	else
+		TO_ENCODING=`echo $TO_ENCODING | awk '{print tolower($0)}'`
+	fi
+	
+	if [ "$HASFILE" = "1" ]; then
+		FROM_ENCODING="`file --mime $FILE | awk -F "charset=" '{print tolower($2)}'`"
+		echo "try $FROM_ENCODING to $TO_ENCODING"
+		if [ "`hasEncoding $FROM_ENCODING`" == "1" ]; then
+			if [ "$FROM_ENCODING" != "1" ] && [ "$FROM_ENCODING" != "$TO_ENCODING" ] && [ `hasEncoding $FROM_ENCODING` == "1" ]; then
+				echo "---"
+				echo "backing up $FILE"
+				backup $FILE &>/dev/null
+				echo "converting $FILE"
+				iconv -f "$FROM_ENCODING" -t "$TO_ENCODING" $FILE > "$FILE.utf8"
+				mv -f "$FILE.utf8" "$FILE"
+			fi
+		else
+			echo "File not converted: $FILE"
+		fi
+	else
+		echo "File not found: $FILE"
+	fi
+}
+start() {
+	if [ "$(( $#>1 ))" = "1" ]; then
+		for(( i=0; i<${#ARGS[@]}; i++ )); do
+			convert ${ARGS[i]}
+		done
+	else
+		convert ${ARGS[0]}
+	fi
+	echo "---"
+	echo "done!"
+}
+
+start $@
