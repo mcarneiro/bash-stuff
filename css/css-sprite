@@ -286,9 +286,9 @@ done;
 rm css-sprite.temp;
 sleep 0.5s;
 success "OK";
-CREATED_DATA="`create`"
 
 title "Step 2 - Loading generated image."
+CREATED_DATA="`create`"
 getSprite "$CREATED_DATA";
 success "OK";
 
