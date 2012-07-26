@@ -6,17 +6,81 @@ set -o nounset
 set -o errexit
 set -o pipefail
 
+B1="\033[1m";
+B2="\033[0m";
 ARGS=( "${@:-}" );
 UPLOAD_URL='http://css.spritegen.com/api.php?upload';
 CREATE_URL='http://css.spritegen.com/api.php?create';
 FILE_LIST='';
 INPUT_PATH=${1:-./};
 OUTPUT='';
+QUIET='';
 CREATED_DATA='';
 SESSION_ID='';
 TO_SEND=();
 TOTAL=0;
 UPLOADED=0;
+
+help() {
+	if [ "${ARGS[0]}" = "?" ]; then
+			echo -e "
+CSS Sprite v0.1
+
+${B1}AUTHOR${B2}
+  Marcelo Miranda Carneiro - mcarneiro@gmail.com
+
+${B1}INFO${B2} (release Thu Jul 26 15:10:13 BRT 2012)
+  Generates a sprite via http://css.spritegen.com/ website and print out the CSS.
+
+${B1}USAGE${B2}
+  css-sprite [FOLDER_PATH] [-s, -o=OUTPUT_PATH]
+
+  ${B1}-s${B2}  silent mode. Only outputs the generated CSS on the stdout;
+  ${B1}-o${B2}  output png file. If nothing is passed, will use the folder
+      name and output at the same directory;
+
+  After the first run, a ${B1}sprite.config${B2} file will be created with the file
+  list. It is possible to create a simple replace rule so the generated
+  CSS classes doesn't need to follow the filenames. The rule for this
+  file is something like:
+
+  file-name.png=.new-css-rule:hover, .in-one-line
+  file-name2.png
+  file-name3.png=a.css-rule:hover
+
+  When sprite.config exists, the script will ONLY use the listed files
+  instead of listing through the folder.
+
+  Known Bug:
+  1. As the replace happens line-by-line on sprite.config, be carefull with
+     the file names. On the example above, the order should
+     be changed to avoid wrong replacement:
+
+     file-name=.test
+     file-name2=.second-test
+     file-name3=a:hover
+
+     the output css will be wrongly replaced:
+
+     .test { background-position ...
+     .test2 { background-position ...
+     .test3 { background-position ...
+     
+     Changing the order will fix the behaviour:
+
+     file-name3=a:hover
+     file-name2=.second-test
+     file-name=.test
+
+${B1}EXAMPLES${B2}
+  css-sprite ~/sprites/structure
+  css-sprite ~/sprites/structure -s
+  css-sprite ~/sprites/structure -o=teste.png
+  css-sprite ~/sprites/structure -s | pbcopy (to copy to clipboard)
+";
+			exit 1;
+	fi
+}
 # FORMAT AND MESSAGES
 getColorId() {
 	# color [isbg=""]
@@ -91,12 +155,13 @@ format() {
 getArg() {
 	## get args in the format "-argname=value"
 	# arg_name
+	# bool
 	# custom_args
 	local CURRARG=""
 	local HASDASH=""
 	local GETNEXTVALUE=""
 	local a=""
-	local CUSTOM_ARGS=( "${2:-}" )
+	local CUSTOM_ARGS=( "${3:-}" )
 
 	if [ -z "$CUSTOM_ARGS" ]; then
 		CUSTOM_ARGS=( ${ARGS[@]} )
@@ -104,11 +169,14 @@ getArg() {
 
 	HASDASH=`echo $1 | awk -F "^-+" '{print$2}'`
 	if [[ -n "$HASDASH" ]]; then
-		
 		for(( i=0; i<${#CUSTOM_ARGS[@]}; i++ )); do
 			a=${CUSTOM_ARGS[$i]}
 			if [ "$a" == "$1" ]; then
 				GETNEXTVALUE="1"
+				if [ "${2:-}" == '1' ]; then
+					CURRARG='1';
+					break;
+				fi
 				continue;
 			fi
 			if [[ "$GETNEXTVALUE" == "1" ]]; then
@@ -116,7 +184,6 @@ getArg() {
 				break;
 			fi
 		done
-		
 	else
 		for(( i=0; i<${#CUSTOM_ARGS[@]}; i++ )); do
 			a=${CUSTOM_ARGS[$i]}
@@ -192,6 +259,11 @@ finish() {
 # arguments
 verifyArgumens() {
 	OUTPUT="`getArg o`";
+	QUIET="`getArg -s 1`";
+	
+	if [ -n "`echo $INPUT_PATH | awk -F '/' '{print$(NF)}'`" ]; then
+		INPUT_PATH="$INPUT_PATH/";
+	fi;
 
 	if [ -d $INPUT_PATH ]; then
 		CONFIG_FILE="${INPUT_PATH}sprite.config";
@@ -210,9 +282,6 @@ getConfig() {
 	local CUSTOM_ARGS
 	if [ -f "${1:-}" ]; then
 		FILE_LIST=`cat ${1:-}`;
-		# TO_SEND=( ${TO_SEND[@]} `echo $CONTENT | awk -F "#####" '{print$1}'` );
-		# local CUSTOM_ARGS="`echo $CONTENT | awk -F "#####" '{print$2}'`"
-		# OUTPUT="${INPUT_PATH}`getArg "o" "$CUSTOM_ARGS"`"
 	fi
 }
 getSessionID() {
@@ -222,7 +291,7 @@ getSessionID() {
 upload() {
 	if [ -f "${1:-}" ]; then
 		log "Uploading image $1";
-		local FILENAME="`file $1 | awk -F ':' '{print$1}' | awk -F '/' '{print$(NF)}'`";
+		local FILENAME=""; # commenting to make it work on git-bash "`file $1 | awk -F ':' '{print$1}' | awk -F '/' '{print$(NF)}'`";
 		local RETURN_MSG="`curl -s -F img=@$1 -F Filename=$FILENAME $UPLOAD_URL -b PHPSESSID=$SESSION_ID`";
 		if [ -z "`echo $RETURN_MSG | grep 'Uploaded successfully'`" ]; then
 			warn "failed to upload $FILENAME. Details below:";
@@ -241,7 +310,7 @@ uploadFiles() {
 	TOTAL=${#TOTAL[@]};
 	echo '' > css-sprite.temp
 	for a in $FILE_LIST; do
-		sleep 0.1s;
+		# sleep 0.1s;
 		upload "${INPUT_PATH}`echo $a | awk -F '=' '{print$1}'`" &
 	done;
 	IFS=' ';
@@ -271,6 +340,11 @@ getSprite() {
 }
 
 # run
+help
+if [ -f 'css-sprite.temp' ]; then
+	rm css-sprite.temp;
+fi;
+
 verifyArgumens
 getSessionID
 
@@ -284,11 +358,11 @@ while [ "$UPLOADED" -lt "$TOTAL" ]; do
 	# wait me
 done;
 rm css-sprite.temp;
-sleep 0.5s;
+# sleep 0.5s;
 success "OK";
+CREATED_DATA="`create`"
 
 title "Step 2 - Loading generated image."
-CREATED_DATA="`create`"
 getSprite "$CREATED_DATA";
 success "OK";
 
@@ -297,4 +371,4 @@ getCSS "$CREATED_DATA";
 success "OK";
 
 # echo $OUTPUT
-success "Arquivo gerado em ${INPUT_PATH}${OUTPUT}";
+success "Generated file at ${INPUT_PATH}${OUTPUT}";
