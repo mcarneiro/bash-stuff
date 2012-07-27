@@ -6,7 +6,6 @@ Some of these scripts are not finished but most of them I use for a while with c
 
 - css/
 	- css-base64
-	- css-sprite*
 - svn/
 	- svn-ignore-add*
 	- svn-psi*
