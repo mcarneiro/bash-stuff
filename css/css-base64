@@ -1,4 +1,6 @@
 #!/bin/bash
 
 echo "/* ${1:-} */
-background:url(data:`file --mime ${1:-} | sed 's/.*: \(.*\);.*/\1/'`;base64,`cat ${1:-} | base64`);" | pbcopy
+background-image:url(data:`file -b --mime ${1:-} | sed 's/^\(.*\);.*/\1/'`;base64,`cat ${1:-} | base64`);
+`file -b ${1:-} | sed 's/^.*, \([[:digit:]]*\) x \([[:digit:]]*\).*$/width: \1px;\\
+height: \2px;/'`" | pbcopy

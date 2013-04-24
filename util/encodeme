@@ -16,18 +16,16 @@ if [ "${ARGS[0]}" = "?" ]; then
 	echo -e "  Marcelo Miranda Carneiro - mcarneiro@gmail.com";
 	echo -e "";
 	echo -e "${B1}INFO${B2} (release 2011-01-11)";
-	echo -e "  Gets only the url from svn info command";
+	echo -e "  Convert files to a desired encode";
 	echo -e "";
 	echo -e "${B1}USAGE${B2}";
-	echo -e "  svn-url [BACK] [FOLDER]";
-	echo -e "";
-	echo -e "  BACK    number of \"back directories\" from the current url";
-	echo -e "  FOLDER  folder to execute svn info";
+	echo -e "  encodeme FILE_PATH # convert a file to utf-8.";
+	echo -e "  encodeme FILE_PATH [FILE_PATH] ... @convert multiple files to utf-8.";
 	echo -e "";
 	echo -e "${B1}EXAMPLES${B2}";
-	echo -e "  svn-url          # https://svn.domain:8443/svn/project/branches/"
-	echo -e "  svn-url 1        # https://svn.desenv:8443/svn/project/"
-	echo -e "  svn-url 0 test/  # https://svn.desenv:8443/svn/project/branches/test/"
+	echo -e "  encodeme file.js"
+	echo -e "  encodeme *.js"
+	echo -e "  encodeme `ls -l *.jsp | awk '{print$(NF)}'`"
 	echo -e "";
 	exit 1;
 fi
@@ -57,20 +55,21 @@ convert() {
 		TO_ENCODING=`echo $TO_ENCODING | awk '{print tolower($0)}'`
 	fi
 	
+	echo "---"
 	if [ "$HASFILE" = "1" ]; then
 		FROM_ENCODING="`file --mime $FILE | awk -F "charset=" '{print tolower($2)}'`"
-		echo "try $FROM_ENCODING to $TO_ENCODING"
 		if [ "`hasEncoding $FROM_ENCODING`" == "1" ]; then
 			if [ "$FROM_ENCODING" != "1" ] && [ "$FROM_ENCODING" != "$TO_ENCODING" ] && [ `hasEncoding $FROM_ENCODING` == "1" ]; then
-				echo "---"
 				echo "backing up $FILE"
 				backup $FILE &>/dev/null
-				echo "converting $FILE"
+				echo "converting $FILE from $FROM_ENCODING to $TO_ENCODING"
 				iconv -f "$FROM_ENCODING" -t "$TO_ENCODING" $FILE > "$FILE.utf8"
 				mv -f "$FILE.utf8" "$FILE"
+			else
+				echo "File not converted: $FILE. Reason: Not necessary"
 			fi
 		else
-			echo "File not converted: $FILE"
+			echo "File not converted: $FILE. Reason: Encode $FROM_ENCODING doesn't exist on your sytem list "
 		fi
 	else
 		echo "File not found: $FILE"
