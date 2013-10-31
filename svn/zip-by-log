@@ -8,7 +8,7 @@ if [ "$1" = "?" ]
 		echo -e "${B1}AUTHOR${B2}";
 		echo -e "  Marcelo Miranda Carneiro - mcarneiro@gmail.com";
 		echo -e "";
-		echo -e "${B1}INFO${B2} (release Qua 14 Set 2011 12:43:13 BRT)";
+		echo -e "${B1}INFO${B2} (release Qui 31 Out 2013 16:23:18 BRST)";
 		echo -e "  Creates a zip file with the modified or created files from a range of revisions";
 		echo -e "";
 		echo -e "${B1}USAGE${B2}";
@@ -32,7 +32,7 @@ if [ "$#" = "2" ];
 fi
 
 HASZIP=`which zip`;
-SVN_URL=`svn info | grep "URL:" | awk '{print $2}'`"/";
+SVN_URL=`svn info | grep -E "^URL:" | awk '{print $2}'`"/";
 PATH_TO_FILTER="$( echo $SVN_URL | awk -F "/" '{print $(NF-1)}')";
 ARGUMENTS=`svn log $LOG -v | grep $PATH_TO_FILTER | grep -E "\s+?[AMR]" | awk -F "$PATH_TO_FILTER/" '{print $2}' | awk '{print $1}' | grep "\." | sort -u`;
 
